@@ -9,14 +9,14 @@ import subprocess
 import distro
 
 import samltest
-from html.parser import HTMLParser
+import HTMLParser
 
 LOGGER = logging.getLogger(__name__)
 
 
-class MyPageParser(HTMLParser):
+class MyPageParser(HTMLParser.HTMLParser):
     def __init__(self):
-        super(MyPageParser, self).__init__()
+        HTMLParser.HTMLParser.__init__(self)
         self.title = None
         self._has_title = False
 

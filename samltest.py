@@ -3,8 +3,8 @@
 import argparse
 import logging
 import lasso
-import urllib.parse
-from html.parser import HTMLParser
+import urlparse
+import HTMLParser
 
 import requests
 
@@ -48,7 +48,7 @@ class SamlFlowError(SamlError):
 
 class LogoutReplyError(SamlError):
     def __init__(self, msg, expected=None, got=None):
-        super().__init__(msg, expected, got)
+        super(LogoutReplyError, self).__init__(msg, expected, got)
         self._base_msg = "Malformed Logout reply"
 
 
@@ -78,18 +78,18 @@ def get_location_from_redirect(redirect):
 
 
 def same_normalized_url(orig, received):
-    orig_normalized = urllib.parse.urlunparse(
-                                    urllib.parse.urlparse(orig))
-    received_normalized = urllib.parse.urlunparse(
-                                    urllib.parse.urlparse(received))
+    orig_normalized = urlparse.urlunparse(
+                                    urlparse.urlparse(orig))
+    received_normalized = urlparse.urlunparse(
+                                    urlparse.urlparse(received))
     logging.debug("Arrived at {0}".format(received_normalized))
     return orig_normalized == received_normalized
 
 
 # Parsers for HTML documents we encounter during the flow
-class AttrHTMLParser(HTMLParser):
+class AttrHTMLParser(HTMLParser.HTMLParser):
     def __init__(self, html_content):
-        super(AttrHTMLParser, self).__init__()
+        HTMLParser.HTMLParser.__init__(self)
         self._tags = dict()
         self.feed(html_content)
 
@@ -100,6 +100,8 @@ class AttrHTMLParser(HTMLParser):
             self._tags[tag] = [dict(attrs)]
 
     def find_tag(self, name, required_attrs=None):
+        print("DBG: tags: %s\n" % (self._tags))
+        print("DBG: name: %s\n" % (name))
         all_tags = self._tags.get(name)
         if all_tags is None:
             return None
@@ -108,8 +110,8 @@ class AttrHTMLParser(HTMLParser):
             return all_tags[0]
 
         for tag in all_tags:
-            intersection = required_attrs.items() & tag.items()
-            if intersection == required_attrs.items():
+            intersection = set(required_attrs.items()) & set(tag.items())
+            if intersection == set(required_attrs.items()):
                 return tag
 
         return None
@@ -125,7 +127,7 @@ class AuthnRequest(object):
         # the IdP name is also not part of the request, but the auth
         # request needs to redirect to the IDP, so it also makes sense
         # to store it here
-        self.idp_name = urllib.parse.urlparse(idp_url).hostname
+        self.idp_name = urlparse.urlparse(idp_url).hostname
 
     def _check_idp_redirect_from_reply(self, idp_redirect):
         "Generic AuthnRequest checker"
@@ -133,13 +135,13 @@ class AuthnRequest(object):
         if location is None:
             raise AuthnRequestError("No Location found in mellon redirect")
 
-        parsed_loc = urllib.parse.urlparse(location)
+        parsed_loc = urlparse.urlparse(location)
         if parsed_loc.hostname != self.idp_name:
             raise AuthnRequestError("AuthnRequest does not redirect to IDP",
                                     self.idp_name,
                                     parsed_redirect.hostname)
 
-        parsed_qs = urllib.parse.parse_qs(parsed_loc.query)
+        parsed_qs = urlparse.parse_qs(parsed_loc.query)
 
         saml_request = parsed_qs.get('SAMLRequest', [])
         try:
@@ -171,14 +173,14 @@ class LogoutRequest(object):
 
     def logout_url(self):
         return_to = "ReturnTo={0}".format(self.return_to)
-        sp_parsed_url = urllib.parse.urlparse(self.sp_url)
-        url_fragments = urllib.parse.ParseResult(scheme='https',
+        sp_parsed_url = urlparse.urlparse(self.sp_url)
+        url_fragments = urlparse.ParseResult(scheme='https',
                                                  netloc=sp_parsed_url.netloc,
                                                  path=self.logout_service,
                                                  params='',
                                                  query=return_to,
                                                  fragment='')
-        return urllib.parse.urlunparse(url_fragments)
+        return urlparse.urlunparse(url_fragments)
 
     def check_from_reply(self, reply):
         raise NotImplementedError("Subclasses must implement this method")
@@ -203,7 +205,7 @@ class SamlResponse(object):
 class MellonAuthnRequest(AuthnRequest):
     def __init__(self, sp_url, idp_url):
         super(MellonAuthnRequest, self).__init__(idp_url)
-        self.sp_parsed_url = urllib.parse.urlparse(sp_url)
+        self.sp_parsed_url = urlparse.urlparse(sp_url)
 
     def _check_mellon_redirect_from_reply(self, resource, mellon_reply):
         # The first redirect will point at the SP again with relative path
@@ -212,7 +214,7 @@ class MellonAuthnRequest(AuthnRequest):
         if location is None:
             raise AuthnRequestError("No Location found in mellon redirect")
 
-        parsed_loc = urllib.parse.urlparse(location)
+        parsed_loc = urlparse.urlparse(location)
         if parsed_loc.hostname != self.sp_parsed_url.hostname:
             raise AuthnRequestError("Mellon did redirect to the SP",
                                     self.sp_parsed_url.hostname,
@@ -221,14 +223,14 @@ class MellonAuthnRequest(AuthnRequest):
             raise AuthnRequestError("Mellon did not redirect to /mellon_root/mellon/login",
                                     "mellon/login", parsed_loc.path)
 
-        parsed_qs = urllib.parse.parse_qs(parsed_loc.query)
+        parsed_qs = urlparse.parse_qs(parsed_loc.query)
         return_to = parsed_qs.get('ReturnTo', [])
         if return_to[0] != resource:
             raise AuthnRequestError("ReturnTo does not redirect to "
                                     "the resource",
                                     resource, return_to)
         idp = parsed_qs.get('IdP', [])
-        parsed_idp = urllib.parse.urlparse(idp[0])
+        parsed_idp = urlparse.urlparse(idp[0])
         if parsed_idp.hostname != self.idp_name:
             raise AuthnRequestError("Unexpected IdP value",
                                     self.idp_name,
@@ -303,7 +305,7 @@ class SamlIdp(object):
         self.realm = realm
         self.soap_binding = soap_binding
 
-        parsed_url = urllib.parse.urlparse(url)
+        parsed_url = urlparse.urlparse(url)
         self.name = parsed_url.hostname
 
         self.idp_type = idp_type
@@ -370,7 +372,8 @@ class SpFactory(object):
         return self.authn_req_cls(*self.auth_req_instance_args)
 
     def logout_request(self, return_to):
-        return self.logout_req_cls(*self.logout_req_instance_args, return_to)
+        all_args = self.logout_req_instance_args + (return_to,)
+        return self.logout_req_cls(*all_args)
 
 
 class IdpFactory(object):
@@ -455,7 +458,7 @@ class SamlLoginTest(object):
         if saml_response.relay_state != authn_request.relay_state:
             raise ValueError("The request and reply RelayState do not match")
         # the reply must also point to the SP postResponse endpoint
-        assertion_consumer_svc = urllib.parse.urlparse(
+        assertion_consumer_svc = urlparse.urlparse(
                                         saml_response.assertion_url).path
         if assertion_consumer_svc != self.sp_factory.assertion_consumer_svc:
             raise ValueError("The request and reply AssertionUrl do not match")
@@ -564,9 +567,9 @@ def request_is_ecp_authn(saml_login_instance, request):
     return True
 
 
-class MyPageParser(HTMLParser):
+class MyPageParser(HTMLParser.HTMLParser):
     def __init__(self):
-        super(MyPageParser, self).__init__()
+        HTMLParser.HTMLParser.__init__(self)
         self.title = None
         self._has_title = False
 

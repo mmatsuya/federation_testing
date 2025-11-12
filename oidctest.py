@@ -4,7 +4,7 @@ import re
 import argparse
 import logging
 import json
-import urllib
+import urlparse
 
 import requests
 import HTMLParser
@@ -69,10 +69,10 @@ def get_location_from_redirect(redirect):
 
 
 def same_normalized_url(orig, received):
-    orig_normalized = urllib.parse.urlunparse(
-                                    urllib.parse.urlparse(orig))
-    received_normalized = urllib.parse.urlunparse(
-                                    urllib.parse.urlparse(orig))
+    orig_normalized = urlparse.urlunparse(
+                                    urlparse.urlparse(orig))
+    received_normalized = urlparse.urlunparse(
+                                    urlparse.urlparse(orig))
     logging.debug("Arrived at {0}".format(received_normalized))
     return orig_normalized == received_normalized
 
@@ -141,7 +141,7 @@ class AuthenticationRequest(object):
     def __init__(self, resource, idp_url):
         self.redirect_uri = None
         self.resource = resource
-        self.idp_name = urllib.parse.urlparse(idp_url).hostname
+        self.idp_name = urlparse.urlparse(idp_url).hostname
 
     def _check_idp_redirect_from_reply(self, idp_redirect):
         """
@@ -153,7 +153,7 @@ class AuthenticationRequest(object):
         if location is None:
             raise AuthnRequestError("No Location found in redirect")
 
-        parsed_loc = urllib.parse.urlparse(location)
+        parsed_loc = urlparse.urlparse(location)
         logging.debug("Parsed %s from the location" % parsed_loc.hostname)
         if parsed_loc.hostname != self.idp_name:
             logging.error("Did not find the expected %s instead found %s" %
@@ -162,7 +162,7 @@ class AuthenticationRequest(object):
                                     self.idp_name,
                                     parsed_loc.hostname)
 
-        parsed_qs = urllib.parse.parse_qs(parsed_loc.query)
+        parsed_qs = urlparse.parse_qs(parsed_loc.query)
 
         # scope (REQUIRED)
         #
@@ -220,14 +220,14 @@ class ModAuthOpenidcLogoutRequest(object):
 
     def logout_url(self):
         query = "logout=%s" % self.logout_redirect_uri
-        parsed = urllib.parse.urlparse(self.mod_redirect_handler_uri)
-        logout_fragments = urllib.parse.ParseResult(scheme=parsed.scheme,
+        parsed = urlparse.urlparse(self.mod_redirect_handler_uri)
+        logout_fragments = urlparse.ParseResult(scheme=parsed.scheme,
                                                     netloc=parsed.netloc,
                                                     path=parsed.path,
                                                     params='',
                                                     query=query,
                                                     fragment='')
-        return urllib.parse.urlunparse(logout_fragments)
+        return urlparse.urlunparse(logout_fragments)
 
     def check_from_reply(self, reply):
         if len(reply.history) != 1:
@@ -244,7 +244,7 @@ class OpenIdIdp(object):
                  login_password_field='password'):
         self.url = url
 
-        parsed_url = urllib.parse.urlparse(url)
+        parsed_url = urlparse.urlparse(url)
         self.name = parsed_url.hostname
 
         self.idp_type = idp_type
@@ -294,7 +294,7 @@ class KeycloakIdp(OpenIdIdp):
         if match is not None:
             authdir = match.group(1)
             token_service_path = authdir + "/" + token_service_path
-        token_service_url = urllib.parse.urljoin(self.url, token_service_path)
+        token_service_url = urlparse.urljoin(self.url, token_service_path)
 
         form_data = {'username': username, 'password': password}
         form_data['grant_type'] = 'password'
