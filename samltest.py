@@ -22,9 +22,9 @@ class SamlError(Exception):
         self._base_msg = "Saml Error"
 
     def __str__(self):
-        str_exc = f"{self._base_msg}: {self.msg}"
+        str_exc = "{0}: {1}".format(self._base_msg, self.msg)
         if self.expected and self.got:
-            str_exc += f": expected {self.expected} but received {self.got}"
+            str_exc += ": expected {0} but received {1}".format(self.expected, self.got)
         return str_exc
 
 
@@ -42,8 +42,8 @@ class SamlFlowError(SamlError):
         self.expected_code = expected_code
 
     def __str__(self):
-        return f"Expected HTTP code {self.expected_code} "\
-                "but received {self.got_code}"
+        return "Expected HTTP code {0} but received {1}".format(
+                self.expected_code, self.got_code)
 
 
 class LogoutReplyError(SamlError):
@@ -82,7 +82,7 @@ def same_normalized_url(orig, received):
                                     urllib.parse.urlparse(orig))
     received_normalized = urllib.parse.urlunparse(
                                     urllib.parse.urlparse(received))
-    logging.debug(f"Arrived at {received_normalized}")
+    logging.debug("Arrived at {0}".format(received_normalized))
     return orig_normalized == received_normalized
 
 
@@ -170,7 +170,7 @@ class LogoutRequest(object):
         self.return_to = return_to
 
     def logout_url(self):
-        return_to = f"ReturnTo={self.return_to}"
+        return_to = "ReturnTo={0}".format(self.return_to)
         sp_parsed_url = urllib.parse.urlparse(self.sp_url)
         url_fragments = urllib.parse.ParseResult(scheme='https',
                                                  netloc=sp_parsed_url.netloc,
@@ -251,8 +251,8 @@ class MellonAuthnRequest(AuthnRequest):
         # access the protected resource, the client should visit a mellon
         # endpoint, the second redirects from the mellon endpoint to the IDP
         if len(reply.history) != 2:
-            raise AuthnRequestError(f"Expected 2 redirects, "
-                                     "got {reply.history}")
+            raise AuthnRequestError("Expected 2 redirects, got {0}".format(
+                                     reply.history))
         mellon_redirect, idp_redirect = reply.history
         self._check_mellon_redirect_from_reply(resource, mellon_redirect)
         self._check_idp_redirect_from_reply(idp_redirect)
@@ -270,7 +270,7 @@ class KeycloakSamlResponse(SamlResponse):
                                        required_attrs={'name': 'RelayState'})
         self.relay_state = rstate_input.get('value')
         # RelayState should point at the protected resource
-        logging.debug(f"RelayState: {self.relay_state}")
+        logging.debug("RelayState: {0}".format(self.relay_state))
 
         saml_response_input = parser.find_tag(
                                        'input',
@@ -280,7 +280,7 @@ class KeycloakSamlResponse(SamlResponse):
         assertion_form = parser.find_tag('form')
         self.assertion_url = assertion_form.get('action')
         # AssertionUrl should point at the /mellon/postResponse endpoint
-        logging.debug(f"Assertion url: {self.assertion_url}")
+        logging.debug("Assertion url: {0}".format(self.assertion_url))
 
 
 class MellonLogoutRequest(LogoutRequest):
@@ -330,7 +330,7 @@ class SamlIdp(object):
 class KeycloakIdp(SamlIdp):
     def __init__(self, url, realm, soap_binding=None):
         if soap_binding is None:
-            soap_binding = f"{url}/realms/{realm}/protocol/saml"
+            soap_binding = "{0}/realms/{1}/protocol/saml".format(url, realm)
         print(soap_binding)
         super(KeycloakIdp, self).__init__(url, 'keycloak', realm, soap_binding)
 
@@ -364,7 +364,7 @@ class SpFactory(object):
             self.logout_req_cls = MellonLogoutRequest
             self.logout_req_instance_args = (sp_url, self.logout_service, )
         else:
-            raise ValueError(f"Unsupported SP type {sp_type}")
+            raise ValueError("Unsupported SP type {0}".format(sp_type))
 
     def authn_request(self):
         return self.authn_req_cls(*self.auth_req_instance_args)
@@ -381,7 +381,7 @@ class IdpFactory(object):
             self.saml_response_cls = KeycloakSamlResponse
             self.idp = KeycloakIdp(idp_url, realm, idp_soap_binding)
         else:
-            raise ValueError(f"Unsupported IdP type {idp_type}")
+            raise ValueError("Unsupported IdP type {0}".format(idp_type))
 
     def saml_response_parser(self, reply):
         saml_response = self.saml_response_cls()
@@ -419,7 +419,7 @@ class SamlLoginTest(object):
 
         sp_consumer_reply = session.post(url=response.assertion_url,
                                          data=form_data)
-        logging.debug(f"SP assertion consumer: {sp_consumer_reply}")
+        logging.debug("SP assertion consumer: {0}".format(sp_consumer_reply))
         return sp_consumer_reply
 
     def redirect_post_flow(self, url, username, password, page_check_fn=None):
@@ -447,7 +447,7 @@ class SamlLoginTest(object):
         if login_reply.status_code != 200:
             raise SamlFlowError(login_reply.status_code)
 
-        logging.info(f"Logged in to the IDP as {username}")
+        logging.info("Logged in to the IDP as {0}".format(username))
 
         # check the response from the IDP
         # If the reply contained a ReturnTo, the response must match it
@@ -460,7 +460,7 @@ class SamlLoginTest(object):
         if assertion_consumer_svc != self.sp_factory.assertion_consumer_svc:
             raise ValueError("The request and reply AssertionUrl do not match")
 
-        logging.info(f"Verified the response from IDP")
+        logging.info("Verified the response from IDP")
 
         # The login returns 200 and a JS form in body which would normally
         # redirect us to the IDP. Since there is no JS in this python-requests
@@ -471,11 +471,11 @@ class SamlLoginTest(object):
         # Make sure we finally got to the URL we wanted initially
         if sp_consumer_reply.status_code != 200:
             raise SamlFlowError(sp_consumer_reply.status_code)
-        logging.info(f"Reached the SP again")
+        logging.info("Reached the SP again")
 
         if not same_normalized_url(url, sp_consumer_reply.url):
             raise ValueError("Expected to reach a different location")
-        logging.info(f"Retrieved {url} from the SP")
+        logging.info("Retrieved {0} from the SP".format(url))
 
         # And make sure we got the contents we wanted initially
         if page_check_fn is not None and \
@@ -488,7 +488,7 @@ class SamlLoginTest(object):
         """
         logout_req = self.sp_factory.logout_request(logout_page)
         logout_url = logout_req.logout_url()
-        logging.debug(f"Will log using {logout_url}")
+        logging.debug("Will log using {0}".format(logout_url))
         document_get = self.session.get(logout_url)
         logout_req.check_from_reply(document_get)
         if document_get.status_code != 200:
@@ -532,11 +532,11 @@ class SamlLoginTest(object):
         # Make sure we finally got to the URL we wanted initially
         if sp_response.status_code != 200:
             raise SamlFlowError(sp_response.status_code)
-        logging.info(f"Reached the SP again")
+        logging.info("Reached the SP again")
 
         if not same_normalized_url(url, sp_response.url):
             raise ValueError("Expected to reach a different location")
-        logging.info(f"Retrieved {url} from the SP")
+        logging.info("Retrieved {0} from the SP".format(url))
 
         # And make sure we got the contents we wanted initially
         if page_check_fn is not None and \
@@ -620,24 +620,24 @@ if __name__ == "__main__":
                                not args.no_verify)
 
     # Gets the page using the WebSSO flow
-    logging.info(f"About to run the WebSSO flow for {args.url} with "
-                  "an empty session")
+    logging.info("About to run the WebSSO flow for {0} with "
+                  "an empty session".format(args.url))
     login_test.redirect_post_flow(args.url,
                                   args.username, args.password,
                                   is_my_page)
 
     # Let's try fetching the page again, this should just succeed with
     # one redirect to mellon
-    logging.info(f"Re-using cached session")
+    logging.info("Re-using cached session")
     sp_resource = login_test.session.get(args.url)
     assert len(sp_resource.history) == 1
     if not same_normalized_url(args.url, sp_resource.url):
         raise ValueError("Expected to reach a different location")
-    logging.info(f"OK, retrieved {args.url} without contacting IdP")
+    logging.info("OK, retrieved {0} without contacting IdP".format(args.url))
 
     # ..but not if we remove the session
-    logging.info(f"Clearing the session")
+    logging.info("Clearing the session")
     login_test.clear_session()
     sp_resource = login_test.session.get(args.url)
     assert len(sp_resource.history) == 2
-    logging.info(f"OK, got redirected to IdP again")
+    logging.info("OK, got redirected to IdP again")

@@ -70,27 +70,27 @@ def test_web_sso_post_redirect(login_user, resource_url, saml_test_instance):
         3. Success
         4. Response should contain redirect to the IdP auth page
     """
-    logging.info(f"About to run the WebSSO flow for {resource_url} with "
-                  "an empty session")
+    logging.info("About to run the WebSSO flow for {0} with "
+                  "an empty session".format(resource_url))
     username, password = login_user
     saml_test_instance.redirect_post_flow(resource_url,
                                           username,
                                           password,
                                           is_my_page)
 
-    logging.info(f"Re-using cached session")
+    logging.info("Re-using cached session")
     sp_resource = saml_test_instance.session.get(resource_url)
     assert is_page_without_redirects(sp_resource)
     assert samltest.same_normalized_url(resource_url, sp_resource.url)
-    logging.info(f"OK, retrieved {resource_url} without contacting IdP")
+    logging.info("OK, retrieved {0} without contacting IdP".format(resource_url))
 
-    logging.info(f"Clearing the session")
+    logging.info("Clearing the session")
     saml_test_instance.clear_session()
     sp_resource = saml_test_instance.session.get(resource_url)
     assert samltest.request_is_idp_auth_redirect(resource_url,
                                                  saml_test_instance,
                                                  sp_resource)
-    logging.info(f"OK, got redirected to IdP again")
+    logging.info("OK, got redirected to IdP again")
 
 
 def test_logout(resource_url, logout_url, saml_login_instance):
@@ -110,11 +110,11 @@ def test_logout(resource_url, logout_url, saml_login_instance):
         4. Response should contain redirect to the IdP auth page
     """
     # First, verify we are logged in
-    logging.info(f"Re-using cached session")
+    logging.info("Re-using cached session")
     sp_resource = saml_login_instance.session.get(resource_url)
     assert is_page_without_redirects(sp_resource)
     assert samltest.same_normalized_url(resource_url, sp_resource.url)
-    logging.info(f"OK, retrieved {resource_url} without contacting IdP")
+    logging.info("OK, retrieved {0} without contacting IdP".format(resource_url))
 
     # Logout..
     saml_login_instance.logout(logout_url)
@@ -125,7 +125,7 @@ def test_logout(resource_url, logout_url, saml_login_instance):
     assert samltest.request_is_idp_auth_redirect(resource_url,
                                                  saml_login_instance,
                                                  sp_resource)
-    logging.info(f"OK, got redirected to IdP again")
+    logging.info("OK, got redirected to IdP again")
 
 
 def test_bad_logout_uri(resource_url, logout_url, saml_login_instance,
@@ -144,11 +144,11 @@ def test_bad_logout_uri(resource_url, logout_url, saml_login_instance,
         3. Should receive Malformed Logout reply
     """
     # First, verify we are logged in
-    logging.info(f"Re-using cached session")
+    logging.info("Re-using cached session")
     sp_resource = saml_login_instance.session.get(resource_url)
     assert is_page_without_redirects(sp_resource)
     assert samltest.same_normalized_url(resource_url, sp_resource.url)
-    logging.info(f"OK, retrieved {resource_url} without contacting IdP")
+    logging.info("OK, retrieved {0} without contacting IdP".format(resource_url))
 
     # Logout..
     for bad_url in bad_logout_redirect_urls:
@@ -173,27 +173,27 @@ def test_ecp_flow(login_user, resource_url, saml_test_instance):
         3. Success
         4. Response should contain ECP AuthnRequest
     """
-    logging.info(f"About to run the ECP flow for {resource_url} with "
-                  "an empty session")
+    logging.info("About to run the ECP flow for {0} with "
+                  "an empty session".format(resource_url))
     username, password = login_user
     saml_test_instance.ecp_flow(resource_url,
                                 username,
                                 password,
                                 is_my_page)
 
-    logging.info(f"Re-using cached session")
+    logging.info("Re-using cached session")
     sp_resource = saml_test_instance.session.get(resource_url,
                                                  headers=samltest.ECP_HEADERS)
     assert is_page_without_redirects(sp_resource)
     assert samltest.same_normalized_url(resource_url, sp_resource.url)
-    logging.info(f"OK, retrieved {resource_url} without contacting IdP")
+    logging.info("OK, retrieved {0} without contacting IdP".format(resource_url))
 
-    logging.info(f"Clearing the session")
+    logging.info("Clearing the session")
     saml_test_instance.clear_session()
     sp_resource = saml_test_instance.session.get(resource_url,
                                                  headers=samltest.ECP_HEADERS)
     assert samltest.request_is_ecp_authn(saml_test_instance, sp_resource)
-    logging.info(f"OK, got back an ECP AuthnRequest")
+    logging.info("OK, got back an ECP AuthnRequest")
 
 
 def test_mellon_enable_info(login_user,
@@ -294,8 +294,8 @@ def test_mellon_diagnostics(login_user, resource_url, saml_test_instance):
         2. Success
         3. File size should be larger than 0
     """
-    logging.info(f"About to run the WebSSO flow for {resource_url} with "
-                  "an empty session")
+    logging.info("About to run the WebSSO flow for {0} with "
+                  "an empty session".format(resource_url))
 
     # first remove the file so we know it's clean for the check later
     diag_file = '/var/log/httpd/mellon_diagnostics'
@@ -311,8 +311,8 @@ def test_mellon_diagnostics(login_user, resource_url, saml_test_instance):
     # finally check that the file exists and is larger than 0
     diag_size = os.path.getsize(diag_file)
     if diag_size > 0:
-        logging.info(f"Diagnostics file {diag_file}"
-                      "size {diag_size} is greater than 0")
+        logging.info("Diagnostics file {0} size {1} is greater than 0".format(
+                      diag_file, diag_size))
 
 
 @pytest.mark.skipif(
@@ -334,7 +334,7 @@ def test_mellon_create_metadata():
     script_cmd = ["/usr/libexec/mod_auth_mellon/mellon_create_metadata.sh",
                  "test", "https://localhost/test"]
     subprocess.run(script_cmd)
-    assert os.path.isfile(f"{temp_dir.name}/test.xml"), \
+    assert os.path.isfile("{0}/test.xml".format(temp_dir.name)), \
         "metadata script did not create xml file"
-    assert os.stat(f"{temp_dir.name}/test.xml").st_size != 0, "xml file is empty"
+    assert os.stat("{0}/test.xml".format(temp_dir.name)).st_size != 0, "xml file is empty"
 

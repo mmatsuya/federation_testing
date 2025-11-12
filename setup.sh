@@ -23,13 +23,21 @@ if [ -f /etc/os-release ]; then
     VER_MAJOR=$(echo $VERSION_ID|cut -f1 -d.)
     VER_MINOR=$(echo $VERSION_ID|cut -f2 -d.)
     if [ "$ID" = "rhel" ]; then
-        dnf config-manager --enable rhel-*
+        yum-config-manager --enable rhel-*
         if [ $VER_MAJOR -eq 8 -a $VER_MINOR -le 3 ]; then
             KC_VERSION=18.0.2
             KC_AUTOBUILD="--auto-build"
             echo "$(hostname -I|awk '{print $1}') $(hostname)" >> /etc/hosts
             set +e
-            dnf config-manager --disable rhel-buildroot-*updates
+            yum-config-manager --disable rhel-buildroot-*updates
+            set -e
+        fi
+        if [ $VER_MAJOR -eq 7 ]; then
+            KC_VERSION=18.0.2
+            KC_AUTOBUILD="--auto-build"
+            echo "$(hostname -I|awk '{print $1}') $(hostname)" >> /etc/hosts
+            set +e
+            yum-config-manager --disable rhel-buildroot-*updates
             set -e
         fi
     fi
@@ -39,7 +47,7 @@ if [ "$ID" = "rhel" -a $VER_MAJOR -eq 8 ]; then
     AUTHDIR="/auth"
     echo "Resetting AUTHDIR to ${AUTHDIR} for RHEL 8"
     echo "Also enabling mod_auth_openidc module for RHEL8"
-    dnf -y module enable mod_auth_openidc
+    yum -y module enable mod_auth_openidc
 fi
 
 if [ "$ID" = "rhel" -a $VER_MAJOR -eq 9 -a $VER_MINOR -le 5 ]; then
@@ -47,28 +55,33 @@ if [ "$ID" = "rhel" -a $VER_MAJOR -eq 9 -a $VER_MINOR -le 5 ]; then
     echo "Resetting AUTHDIR to ${AUTHDIR} for RHEL 9.5 and earlier"
 fi
 
-dnf -y install \
+if [ "$ID" = "rhel" -a $VER_MAJOR -eq 7 ]; then
+    AUTHDIR="/auth"
+    echo "Resetting AUTHDIR to ${AUTHDIR} for RHEL 9.5 and earlier"
+fi
+
+yum -y install \
     policycoreutils-python-utils \
     keycloak-httpd-client-install \
     mod_auth_openidc \
-    python3-lxml \
-    python3-requests \
-    python3-pytest \
-    python3-distro \
+    python-lxml \
+    python-requests \
+    pytest \
+    python2-distro \
     bind-utils \
-    dnf-utils \
+    yum-utils \
     openssl \
     mod_ssl \
     httpd \
     podman
 
 if [ "$ID" = "rhel" -o "$ID" = "centos" ] && [ $VER_MAJOR -lt 10 ]; then
-    dnf -y install \
+    yum -y install \
         java-11-openjdk-headless \
         mod_auth_mellon \
-        python3-lasso
+        lasso-python
 else
-    dnf -y install \
+    yum -y install \
         java-21-openjdk-headless
 fi
 

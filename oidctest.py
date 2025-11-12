@@ -4,10 +4,10 @@ import re
 import argparse
 import logging
 import json
-import urllib.parse
+import urllib
 
 import requests
-from html.parser import HTMLParser
+import HTMLParser
 
 
 # Exceptions
@@ -19,9 +19,9 @@ class OidcError(Exception):
         self._base_msg = "Oidc Error"
 
     def __str__(self):
-        str_exc = f"{self._base_msg}: {self.msg}"
+        str_exc = "{0}: {1}".format(self._base_msg, self.msg)
         if self.expected and self.got:
-            str_exc += f": expected {self.expected} but received {self.got}"
+            str_exc += ": expected {0} but received {1}".format(self.expected, self.got)
         return str_exc
 
 
@@ -45,8 +45,8 @@ class OidcFlowError(OidcError):
         self.expected_code = expected_code
 
     def __str__(self):
-        return f"Expected HTTP code {self.expected_code} "\
-               f"but received {self.got_code}"
+        return "Expected HTTP code {0} but received {1}".format(
+               self.expected_code, self.got_code)
 
 
 class LogoutReplyError(OidcError):
@@ -73,21 +73,21 @@ def same_normalized_url(orig, received):
                                     urllib.parse.urlparse(orig))
     received_normalized = urllib.parse.urlunparse(
                                     urllib.parse.urlparse(orig))
-    logging.debug(f"Arrived at {received_normalized}")
+    logging.debug("Arrived at {0}".format(received_normalized))
     return orig_normalized == received_normalized
 
 
 def check_query_parameter(parsed_query, key, expected_value):
     val = parsed_query.get(key, [None, ])[0]
     if val != expected_value:
-        raise ValueError(f"{key} must be set to {expected_value}, "
-                         "was set to {val}")
+        raise ValueError("{0} must be set to {1}, was set to {2}".format(
+                         key, expected_value, val))
 
 
 def query_parameter_exists(parsed_query, key):
     val = parsed_query.get(key)
     if not val:
-        raise ValueError(f"{key} was not present in query")
+        raise ValueError("{0} was not present in query".format(key))
 
 
 def request_is_idp_auth_redirect(resource, openidc_login_instance, request):
@@ -105,7 +105,7 @@ def request_is_idp_auth_redirect(resource, openidc_login_instance, request):
 
 
 # Parsers for HTML documents we encounter during the flow
-class AttrHTMLParser(HTMLParser):
+class AttrHTMLParser(HTMLParser.HTMLParser):
     def __init__(self, html_content):
         super(AttrHTMLParser, self).__init__()
         self._tags = dict()
@@ -323,7 +323,7 @@ class SpFactory(object):
             self.logout_req_cls = ModAuthOpenidcLogoutRequest
             self.logout_req_instance_args = (oidc_redirect_uri, )
         else:
-            raise ValueError(f"Unsupported SP type {sp_type}")
+            raise ValueError("Unsupported SP type {0}".format(sp_type))
 
     def authn_request(self):
         return self.authn_req_cls(*self.auth_req_instance_args)
@@ -341,7 +341,7 @@ class IdpFactory(object):
         if idp_type == 'keycloak':
             self.idp = KeycloakIdp(idp_url, idp_realm)
         else:
-            raise ValueError(f"Unsupported IdP type {idp_type}")
+            raise ValueError("Unsupported IdP type {0}".format(idp_type))
 
     def idp_login(self, session, login_page, username, password):
         return self.idp.do_login(session, login_page, username, password)
@@ -401,11 +401,11 @@ class OidcLoginTest(object):
             raise OidcFlowError("Expected a redirect back to SP")
 
         reply = self.session.get(get_location_from_redirect(login_reply))
-        logging.info(f"Logged in to the IDP as {username}")
+        logging.info("Logged in to the IDP as {0}".format(username))
 
         if not same_normalized_url(url, reply.url):
             raise ValueError("Expected to reach a different location")
-        logging.info(f"Retrieved {url} from the SP")
+        logging.info("Retrieved {0} from the SP".format(url))
 
         # And make sure we got the contents we wanted initially
         if page_check_fn is not None and \
@@ -476,8 +476,8 @@ if __name__ == "__main__":
 
     # Gets the page using the WebSSO flow
     if args.test_type == 'oidc':
-        logging.info(f"About to run the authorisation flow for {args.url} with "
-                    "an empty session")
+        logging.info("About to run the authorisation flow for {0} with "
+                    "an empty session".format(args.url))
 
         login_test.authorisation_flow(args.url,
                                       args.username, args.password,

@@ -32,15 +32,15 @@ fi
 echo Secret123 | \
 keycloak-httpd-client-install   \
     --client-originate-method registration \
-    --client-hostname $(hostname) \
+    --mellon-hostname $(hostname) \
     --keycloak-server-url ${KHCI_SERVERURL} \
     --keycloak-admin-username admin \
     --keycloak-admin-password-file - \
     --app-name mellon_example_app \
     --keycloak-realm master \
-    --location-root "/mellon_root" \
-    --client-https-port 60443 \
-    --protected-locations "/mellon_root/private" \
+    --mellon-root "/mellon_root" \
+    --mellon-https-port 60443 \
+    --mellon-protected-locations "/mellon_root/private" \
     --force
 
 ################
@@ -58,7 +58,7 @@ systemctl restart httpd
 # at the moment it's not present in any of the repos
 # (see RCM-59421)
 rpm -q mod_auth_mellon-diagnostics || \
-    dnf -y install mod_auth_mellon-diagnostics || \
+    yum -y install mod_auth_mellon-diagnostics || \
     exit 0
 
 rm -f /var/log/httpd/mellon_diagnostics
@@ -89,7 +89,7 @@ $kcadm update clients/$ID -r master -s 'attributes={"saml.allow.ecp.flow":"true"
 # Run test
 sleep 10
 
-py.test-3 --idp-realm master \
+py.test --idp-realm master \
           --idp-url https://$(hostname):8443${AUTHDIR} \
           --sp-url https://$(hostname):60443/mellon_root \
           --username testuser --password Secret123 \
